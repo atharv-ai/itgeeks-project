@@ -1,17 +1,18 @@
 import { useState } from "react"
-import { Receipt, CheckCircle2, RotateCcw, Users, ArrowLeft } from "lucide-react"
+import { Receipt } from "lucide-react"
 import { UploadView } from "@/components/UploadView"
 import { ReviewView } from "@/components/ReviewView"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { AssignmentView } from "@/components/AssignmentView"
+import { ResultView } from "@/components/ResultView"
 import { Badge } from "@/components/ui/badge"
-import type { Bill } from "@/types"
+import type { Bill, CalculateResponse } from "@/types"
 
-type AppPhase = "upload" | "review" | "assignment"
+type AppPhase = "upload" | "review" | "assignment" | "result"
 
 export function App() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [billData, setBillData] = useState<Bill | null>(null)
+  const [splitResult, setSplitResult] = useState<CalculateResponse | null>(null)
   const [phase, setPhase] = useState<AppPhase>("upload")
 
   const handleScanComplete = (id: string, data: Bill) => {
@@ -25,9 +26,15 @@ export function App() {
     setPhase("assignment")
   }
 
+  const handleCalculateComplete = (result: CalculateResponse) => {
+    setSplitResult(result)
+    setPhase("result")
+  }
+
   const handleReset = () => {
     setSessionId(null)
     setBillData(null)
+    setSplitResult(null)
     setPhase("upload")
   }
 
@@ -36,7 +43,7 @@ export function App() {
       {/* Top Navbar */}
       <header className="border-b border-white/10 bg-slate-950/70 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={handleReset}>
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-emerald-400 p-0.5 shadow-lg shadow-indigo-500/20">
               <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
                 <Receipt className="w-5 h-5 text-emerald-400" />
@@ -58,8 +65,19 @@ export function App() {
                 Session: {sessionId.slice(-6)}
               </Badge>
             )}
+
+            {/* Stepper Pill Indicator */}
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-medium text-slate-400">
+              <span className={phase === "upload" ? "text-emerald-400 font-bold" : "text-slate-500"}>1. Upload</span>
+              <span>&rsaquo;</span>
+              <span className={phase === "review" ? "text-emerald-400 font-bold" : "text-slate-500"}>2. Review</span>
+              <span>&rsaquo;</span>
+              <span className={phase === "assignment" ? "text-emerald-400 font-bold" : "text-slate-500"}>3. Assign</span>
+              <span>&rsaquo;</span>
+              <span className={phase === "result" ? "text-emerald-400 font-bold" : "text-slate-500"}>4. Result</span>
+            </div>
+
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs text-slate-400 hidden sm:inline">Backend Connected</span>
           </div>
         </div>
       </header>
@@ -82,7 +100,7 @@ export function App() {
           </div>
         )}
 
-        {/* Phase 2: Review View (renders if bill data exists) */}
+        {/* Phase 2: Review View */}
         {phase === "review" && billData && sessionId && (
           <ReviewView
             initialBill={billData}
@@ -92,61 +110,23 @@ export function App() {
           />
         )}
 
-        {/* Phase 3: Assignment Phase */}
+        {/* Phase 3: Assignment View */}
         {phase === "assignment" && billData && sessionId && (
-          <div className="w-full max-w-3xl space-y-6 animate-in fade-in duration-300">
-            <Card className="border-white/10 bg-slate-900/60 backdrop-blur-xl shadow-2xl text-slate-100">
-              <CardHeader className="flex flex-row items-center justify-between pb-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                    <CardTitle className="text-xl text-white">Bill Verified — Assignment Phase</CardTitle>
-                  </div>
-                  <CardDescription className="text-slate-400 font-mono text-xs">
-                    Session ID: <span className="text-slate-200">{sessionId}</span>
-                  </CardDescription>
-                </div>
-                <Badge variant="success" className="gap-1 px-3 py-1">
-                  Accuracy Confirmed
-                </Badge>
-              </CardHeader>
+          <AssignmentView
+            bill={billData}
+            sessionId={sessionId}
+            onCalculateComplete={handleCalculateComplete}
+            onBackToReview={() => setPhase("review")}
+          />
+        )}
 
-              <CardContent className="space-y-6">
-                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-5 flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0 text-emerald-400">
-                    <Users className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-semibold text-white">Ready to Assign Members</h4>
-                    <p className="text-xs text-slate-300">
-                      You have verified {billData.items.length} line items totaling{" "}
-                      <span className="font-bold text-white font-mono">${billData.total.toFixed(2)}</span>. In the next step, you can add friends and assign who shared each item.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setPhase("review")}
-                    className="border-white/10 text-slate-300 hover:text-white hover:bg-white/10"
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Edit Verified Items
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    onClick={handleReset}
-                    className="text-xs text-slate-400 hover:text-white"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
-                    Start Over
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+        {/* Phase 4: Result View */}
+        {phase === "result" && splitResult && (
+          <ResultView
+            result={splitResult}
+            onBackToAssignment={() => setPhase("assignment")}
+            onStartOver={handleReset}
+          />
         )}
       </main>
     </div>

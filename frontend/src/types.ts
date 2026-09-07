@@ -27,3 +27,33 @@ export interface SelectedFile {
   file: File
   previewUrl: string
 }
+
+export interface AssignedItemDetail {
+  item_index: number
+  name: string
+  quantity: number
+  item_price: number
+  shares: number
+  amount: number
+}
+
+export interface PersonBreakdown {
+  member: string
+  base_item_cost: number
+  subtotal_ratio: number
+  tax_contribution: number
+  tip_contribution: number
+  discount_contribution: number
+  total: number
+  assigned_items: AssignedItemDetail[]
+}
+
+export interface CalculateResponse {
+  session_id?: string | null
+  breakdown: PersonBreakdown[]
+  total_subtotal: number
+  total_taxes: number
+  total_service_charge: number
+  total_discounts: number
+  grand_total: number
+}
