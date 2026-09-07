@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "name": "Coffee",
+      "quantity": 1.0,
+      "price": 2.95,
+      "confidence_score": 0.98
+    },
+    {
+      "name": "Chicken Parmesan",
+      "quantity": 1.0,
+      "price": 17.95,
+      "confidence_score": 0.98
+    },
+    {
+      "name": "Prime Top Sirloin",
+      "quantity": 1.0,
+      "price": 25.95,
+      "confidence_score": 0.98
+    },
+    {
+      "name": "The Bacon-Cheese Burger",
+      "quantity": 1.0,
+      "price": 13.95,
+      "confidence_score": 0.98
+    },
+    {
+      "name": "Coffee",
+      "quantity": 1.0,
+      "price": 2.95,
+      "confidence_score": 0.98
+    }
+  ],
+  "subtotal": 63.75,
+  "taxes": 5.5,
+  "service_charge": 0.0,
+  "discounts": 0.0,
+  "total": 69.25,
+  "overall_confidence": 0.99
+}

@@ -43,8 +43,9 @@ def extract_bill_from_images(
 
     genai.configure(api_key=api_key)
 
+    model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
     model = genai.GenerativeModel(
-        model_name="gemini-3.8-flash",
+        model_name=model_name,
         generation_config=genai.GenerationConfig(
             response_mime_type="application/json",
             response_schema=Bill,

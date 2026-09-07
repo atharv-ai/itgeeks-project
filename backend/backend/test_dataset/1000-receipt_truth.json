@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "name": "Coffee",
+      "quantity": 1,
+      "price": 3.0
+    },
+    {
+      "name": "Lunch",
+      "quantity": 2,
+      "price": 45.9
+    },
+    {
+      "name": "Coke",
+      "quantity": 1,
+      "price": 3.0
+    }
+  ],
+  "subtotal": 51.9,
+  "taxes": 4.68,
+  "service_charge": 0.0,
+  "discounts": 0.0,
+  "total": 56.58
+}

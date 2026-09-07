@@ -1,0 +1,49 @@
+{
+  "items": [
+    {
+      "name": "Draft Blackhouse",
+      "quantity": 1,
+      "price": 7.0
+    },
+    {
+      "name": "\"Cowboy\" 16oz Ribeye",
+      "quantity": 1,
+      "price": 45.0
+    },
+    {
+      "name": "Make It Blue",
+      "quantity": 1,
+      "price": 5.0
+    },
+    {
+      "name": "Add Lobster",
+      "quantity": 1,
+      "price": 21.0
+    },
+    {
+      "name": "CK Manhattan",
+      "quantity": 2,
+      "price": 10.0
+    },
+    {
+      "name": "Whistle Pig Rye 10yr",
+      "quantity": 2,
+      "price": 40.0
+    },
+    {
+      "name": "\"Duke\" 16oz Top Sirloin",
+      "quantity": 1,
+      "price": 34.0
+    },
+    {
+      "name": "Make It Blue",
+      "quantity": 1,
+      "price": 5.0
+    }
+  ],
+  "subtotal": 167.0,
+  "taxes": 12.94,
+  "service_charge": 0.0,
+  "discounts": 0.0,
+  "total": 179.94
+}

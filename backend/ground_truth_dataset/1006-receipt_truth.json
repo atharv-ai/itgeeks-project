@@ -1,0 +1,44 @@
+{
+  "items": [
+    {
+      "name": "Hi.Chk Steak(K)",
+      "quantity": 1,
+      "price": 22.95
+    },
+    {
+      "name": "Noodle",
+      "quantity": 1,
+      "price": 2.0
+    },
+    {
+      "name": "Sushi Deluxe",
+      "quantity": 1,
+      "price": 20.75
+    },
+    {
+      "name": "Glenmont Roll",
+      "quantity": 1,
+      "price": 15.95
+    },
+    {
+      "name": "Philly R",
+      "quantity": 1,
+      "price": 6.5
+    },
+    {
+      "name": "Sp Tuna R",
+      "quantity": 2,
+      "price": 13.0
+    },
+    {
+      "name": "Salmon R",
+      "quantity": 1,
+      "price": 5.5
+    }
+  ],
+  "subtotal": 86.65,
+  "taxes": 6.93,
+  "service_charge": 0.0,
+  "discounts": 0.0,
+  "total": 93.58
+}

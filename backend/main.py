@@ -11,8 +11,9 @@ from database import (
     get_database,
     get_bill_sessions_collection,
 )
-from schemas import Bill, ExtractResponse
+from schemas import Bill, ExtractResponse, CalculateRequest, CalculateResponse
 from services.ai_extractor import extract_bill_from_images
+from services.math_engine import calculate_bill_split
 
 
 @asynccontextmanager
@@ -184,6 +185,63 @@ async def extract_receipt(
         status="extracted",
         created_at=now,
         extracted_data=Bill.model_validate(extracted_data),
+    )
+
+@app.post(
+    "/api/calculate",
+    response_model=CalculateResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["Calculation"],
+    summary="Calculate proportional bill split among members",
+)
+async def calculate_split(request: CalculateRequest):
+    try:
+        result = calculate_bill_split(
+            bill=request.bill,
+            members=request.members,
+            item_assignments=request.item_assignments,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Calculation error: {str(e)}",
+        )
+
+    # If session_id is provided, optionally update the MongoDB session document
+    if request.session_id:
+        collection = get_bill_sessions_collection()
+        if collection is not None:
+            try:
+                from bson import ObjectId
+                now = datetime.now(timezone.utc).isoformat()
+                await collection.update_one(
+                    {"_id": ObjectId(request.session_id)},
+                    {
+                        "$set": {
+                            "people": request.members,
+                            "item_assignments": request.item_assignments,
+                            "breakdown": result["breakdown"],
+                            "status": "calculated",
+                            "updated_at": now,
+                        }
+                    },
+                )
+            except Exception:
+                pass
+
+    return CalculateResponse(
+        session_id=request.session_id,
+        breakdown=result["breakdown"],
+        total_subtotal=result["total_subtotal"],
+        total_taxes=result["total_taxes"],
+        total_service_charge=result["total_service_charge"],
+        total_discounts=result["total_discounts"],
+        grand_total=result["grand_total"],
     )
 
 if __name__ == "__main__":

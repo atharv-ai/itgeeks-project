@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "name": "#1 CHKN PLATE",
+      "quantity": 1,
+      "price": 9.39
+    },
+    {
+      "name": "+ AVOCADO",
+      "quantity": 1,
+      "price": 1.95
+    },
+    {
+      "name": "MD. DRINK",
+      "quantity": 1,
+      "price": 2.29
+    }
+  ],
+  "subtotal": 13.63,
+  "taxes": 1.4,
+  "service_charge": 0.0,
+  "discounts": 0.0,
+  "total": 15.03
+}

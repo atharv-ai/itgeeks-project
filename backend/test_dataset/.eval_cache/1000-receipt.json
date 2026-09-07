@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "name": "Coffee",
+      "quantity": 1.0,
+      "price": 3.0,
+      "confidence_score": 0.99
+    },
+    {
+      "name": "Lunch",
+      "quantity": 2.0,
+      "price": 45.9,
+      "confidence_score": 0.99
+    },
+    {
+      "name": "Coke",
+      "quantity": 1.0,
+      "price": 3.0,
+      "confidence_score": 0.99
+    }
+  ],
+  "subtotal": 51.9,
+  "taxes": 4.68,
+  "service_charge": 0.0,
+  "discounts": 0.0,
+  "total": 56.58,
+  "overall_confidence": 0.98
+}

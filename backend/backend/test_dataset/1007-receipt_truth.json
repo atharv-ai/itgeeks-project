@@ -1,0 +1,54 @@
+{
+  "items": [
+    {
+      "name": "Hamachi Collar",
+      "quantity": 1,
+      "price": 12.0
+    },
+    {
+      "name": "Mega Poke Bowl",
+      "quantity": 1,
+      "price": 17.0
+    },
+    {
+      "name": "Hamachi - Sashimi",
+      "quantity": 1,
+      "price": 12.0
+    },
+    {
+      "name": "Maguro - Sashimi",
+      "quantity": 1,
+      "price": 11.0
+    },
+    {
+      "name": "Salmon - Sashimi",
+      "quantity": 1,
+      "price": 10.0
+    },
+    {
+      "name": "Sockeye Salmon - Sashimi",
+      "quantity": 3,
+      "price": 36.0
+    },
+    {
+      "name": "Hamachi Japapeno",
+      "quantity": 1,
+      "price": 12.0
+    },
+    {
+      "name": "Salmon Collar",
+      "quantity": 1,
+      "price": 10.0
+    },
+    {
+      "name": "Escolar - Sashimi",
+      "quantity": 1,
+      "price": 11.0
+    }
+  ],
+  "subtotal": 131.0,
+  "taxes": 12.71,
+  "service_charge": 0.0,
+  "discounts": 0.0,
+  "total": 143.71
+}

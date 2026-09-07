@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "name": "Steak Tip Skewers",
+      "quantity": 1,
+      "price": 12.99
+    },
+    {
+      "name": "Piatto Gorgonzola",
+      "quantity": 1,
+      "price": 12.99
+    },
+    {
+      "name": "Root Beer",
+      "quantity": 1,
+      "price": 2.5
+    }
+  ],
+  "subtotal": 28.48,
+  "taxes": 2.28,
+  "service_charge": 0.0,
+  "discounts": 0.0,
+  "total": 30.76
+}

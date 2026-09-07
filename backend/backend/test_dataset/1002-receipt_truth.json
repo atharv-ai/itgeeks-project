@@ -1,0 +1,19 @@
+{
+  "items": [
+    {
+      "name": "Power Veg Bowl",
+      "quantity": 1,
+      "price": 4.99
+    },
+    {
+      "name": "Rg Orange Crsh Fz",
+      "quantity": 1,
+      "price": 1.99
+    }
+  ],
+  "subtotal": 6.98,
+  "taxes": 0.63,
+  "service_charge": 0.0,
+  "discounts": 0.0,
+  "total": 7.61
+}
