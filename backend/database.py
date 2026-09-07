@@ -21,7 +21,12 @@ class MongoDB:
 db_instance = MongoDB()
 
 async def connect_to_mongo():
-    db_instance.client = AsyncIOMotorClient(MONGODB_URL, tlsCAFile=certifi.where())
+    client_kwargs = {}
+    # Use certifi CA bundle when connecting to MongoDB Atlas (srv) or when TLS/SSL is explicitly requested
+    if "mongodb+srv" in MONGODB_URL or "tls=true" in MONGODB_URL.lower() or "ssl=true" in MONGODB_URL.lower():
+        client_kwargs["tlsCAFile"] = certifi.where()
+
+    db_instance.client = AsyncIOMotorClient(MONGODB_URL, **client_kwargs)
     db_instance.db = db_instance.client[DATABASE_NAME]
     db_instance.bill_sessions = db_instance.db["bill_sessions"]
     print(f"Connected to MongoDB at {MONGODB_URL}, database: {DATABASE_NAME}")
