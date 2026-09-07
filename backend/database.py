@@ -21,7 +21,7 @@ class MongoDB:
 db_instance = MongoDB()
 
 async def connect_to_mongo():
-    client_kwargs = {}
+    client_kwargs: dict[str, Any] = {}
     # Use certifi CA bundle when connecting to MongoDB Atlas (srv) or when TLS/SSL is explicitly requested
     if "mongodb+srv" in MONGODB_URL or "tls=true" in MONGODB_URL.lower() or "ssl=true" in MONGODB_URL.lower():
         client_kwargs["tlsCAFile"] = certifi.where()
