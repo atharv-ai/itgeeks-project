@@ -1,9 +1,9 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from database import (
     connect_to_mongo,
@@ -11,6 +11,9 @@ from database import (
     get_database,
     get_bill_sessions_collection,
 )
+from schemas import Bill, ExtractResponse
+from services.ai_extractor import extract_bill_from_images
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -99,6 +102,88 @@ async def create_session(request: Optional[CreateSessionRequest] = None):
         status="created",
         created_at=now,
         session_name=session_name,
+    )
+
+@app.post(
+    "/api/extract",
+    response_model=ExtractResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Extraction"],
+    summary="Extract receipt data from multiple images and create session",
+)
+async def extract_receipt(
+    files: List[UploadFile] = File(..., description="One or more receipt images/photos to extract"),
+    session_name: Optional[str] = Form(None, description="Optional name for this bill splitting session"),
+):
+    if not files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No files uploaded. Please provide at least one receipt image.",
+        )
+
+    collection = get_bill_sessions_collection()
+    if collection is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database collection not available",
+        )
+
+    # Read uploaded file contents and collect MIME types
+    image_bytes_list: List[bytes] = []
+    mime_types: List[str] = []
+    for file in files:
+        content = await file.read()
+        if content:
+            image_bytes_list.append(content)
+            mime_types.append(file.content_type or "image/jpeg")
+
+    if not image_bytes_list:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file(s) are empty. Please provide valid image files.",
+        )
+
+    try:
+        extracted_data = extract_bill_from_images(image_bytes_list, mime_types=mime_types)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"AI extraction failed: {str(e)}",
+        )
+
+    now = datetime.now(timezone.utc).isoformat()
+    doc_name = session_name if session_name else f"Receipt {now}"
+
+    session_doc = {
+        "session_name": doc_name,
+        "status": "extracted",
+        "created_at": now,
+        "updated_at": now,
+        "raw_extracted": extracted_data,
+        "items": extracted_data.get("items", []),
+        "subtotal": extracted_data.get("subtotal", 0.0),
+        "taxes": extracted_data.get("taxes", 0.0),
+        "service_charge": extracted_data.get("service_charge", 0.0),
+        "discounts": extracted_data.get("discounts", 0.0),
+        "total": extracted_data.get("total", 0.0),
+        "overall_confidence": extracted_data.get("overall_confidence", 1.0),
+        "people": [],
+        "breakdown": None,
+    }
+
+    result = await collection.insert_one(session_doc)
+    session_id = str(result.inserted_id)
+
+    return ExtractResponse(
+        session_id=session_id,
+        status="extracted",
+        created_at=now,
+        extracted_data=Bill.model_validate(extracted_data),
     )
 
 if __name__ == "__main__":
