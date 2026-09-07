@@ -1,24 +1,34 @@
 import { useState } from "react"
-import { Receipt, CheckCircle2, RotateCcw, ArrowRight, ShieldCheck, Tag } from "lucide-react"
+import { Receipt, CheckCircle2, RotateCcw, Users, ArrowLeft } from "lucide-react"
 import { UploadView } from "@/components/UploadView"
+import { ReviewView } from "@/components/ReviewView"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import type { Bill } from "@/types"
+
+type AppPhase = "upload" | "review" | "assignment"
 
 export function App() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [billData, setBillData] = useState<Bill | null>(null)
+  const [phase, setPhase] = useState<AppPhase>("upload")
 
   const handleScanComplete = (id: string, data: Bill) => {
     setSessionId(id)
     setBillData(data)
+    setPhase("review")
+  }
+
+  const handleConfirmAccuracy = (verifiedBill: Bill) => {
+    setBillData(verifiedBill)
+    setPhase("assignment")
   }
 
   const handleReset = () => {
     setSessionId(null)
     setBillData(null)
+    setPhase("upload")
   }
 
   return (
@@ -56,7 +66,8 @@ export function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col items-center">
-        {!billData ? (
+        {/* Phase 1: Upload View */}
+        {phase === "upload" && (
           <div className="w-full max-w-2xl space-y-8 animate-in fade-in duration-300">
             <div className="text-center space-y-3">
               <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
@@ -67,120 +78,70 @@ export function App() {
               </p>
             </div>
 
-            {/* Upload View Component */}
             <UploadView onScanComplete={handleScanComplete} />
           </div>
-        ) : (
-          /* Scanned Bill Presentation */
+        )}
+
+        {/* Phase 2: Review View (renders if bill data exists) */}
+        {phase === "review" && billData && sessionId && (
+          <ReviewView
+            initialBill={billData}
+            sessionId={sessionId}
+            onConfirmAccuracy={handleConfirmAccuracy}
+            onBackToUpload={handleReset}
+          />
+        )}
+
+        {/* Phase 3: Assignment Phase */}
+        {phase === "assignment" && billData && sessionId && (
           <div className="w-full max-w-3xl space-y-6 animate-in fade-in duration-300">
-            {/* Header Card */}
             <Card className="border-white/10 bg-slate-900/60 backdrop-blur-xl shadow-2xl text-slate-100">
               <CardHeader className="flex flex-row items-center justify-between pb-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                    <CardTitle className="text-xl text-white">Receipt Extracted Successfully</CardTitle>
+                    <CardTitle className="text-xl text-white">Bill Verified — Assignment Phase</CardTitle>
                   </div>
                   <CardDescription className="text-slate-400 font-mono text-xs">
                     Session ID: <span className="text-slate-200">{sessionId}</span>
                   </CardDescription>
                 </div>
                 <Badge variant="success" className="gap-1 px-3 py-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  {((billData.overall_confidence || 0.99) * 100).toFixed(0)}% AI Confidence
+                  Accuracy Confirmed
                 </Badge>
               </CardHeader>
 
               <CardContent className="space-y-6">
-                {/* Line Items List */}
-                <div className="space-y-3">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5" />
-                    Line Items ({billData.items.length})
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-5 flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0 text-emerald-400">
+                    <Users className="w-5 h-5" />
                   </div>
-
-                  <div className="rounded-xl border border-white/5 bg-white/[0.02] divide-y divide-white/5 overflow-hidden">
-                    {billData.items.map((item, index) => (
-                      <div
-                        key={index}
-                        className="p-3.5 flex items-center justify-between hover:bg-white/[0.04] transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-mono text-slate-500 w-5">
-                            #{index + 1}
-                          </span>
-                          <div>
-                            <p className="text-sm font-medium text-slate-200">{item.name}</p>
-                            <p className="text-xs text-slate-400">
-                              Qty: <span className="font-semibold text-slate-300">{item.quantity}</span>
-                              {item.quantity > 1 && (
-                                <span className="text-slate-500 ml-2">
-                                  (${((item.price / item.quantity) || item.price).toFixed(2)} ea)
-                                </span>
-                              )}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="text-right">
-                          <span className="text-sm font-semibold text-white font-mono">
-                            ${item.price.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-semibold text-white">Ready to Assign Members</h4>
+                    <p className="text-xs text-slate-300">
+                      You have verified {billData.items.length} line items totaling{" "}
+                      <span className="font-bold text-white font-mono">${billData.total.toFixed(2)}</span>. In the next step, you can add friends and assign who shared each item.
+                    </p>
                   </div>
                 </div>
 
-                <Separator className="bg-white/10" />
-
-                {/* Totals Summary */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3 text-center">
-                    <span className="text-[11px] text-slate-400 block mb-1">Subtotal</span>
-                    <span className="text-base font-bold text-slate-200 font-mono">
-                      ${billData.subtotal.toFixed(2)}
-                    </span>
-                  </div>
-
-                  <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3 text-center">
-                    <span className="text-[11px] text-slate-400 block mb-1">Taxes</span>
-                    <span className="text-base font-bold text-slate-200 font-mono">
-                      ${billData.taxes.toFixed(2)}
-                    </span>
-                  </div>
-
-                  <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3 text-center">
-                    <span className="text-[11px] text-slate-400 block mb-1">Tip / Service</span>
-                    <span className="text-base font-bold text-slate-200 font-mono">
-                      ${billData.service_charge.toFixed(2)}
-                    </span>
-                  </div>
-
-                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-center">
-                    <span className="text-[11px] text-emerald-400 block mb-1 font-medium">Grand Total</span>
-                    <span className="text-base font-bold text-emerald-300 font-mono">
-                      ${billData.total.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                <div className="flex items-center justify-between pt-2">
                   <Button
                     variant="outline"
-                    onClick={handleReset}
-                    className="w-full sm:w-auto border-white/10 text-slate-300 hover:text-white hover:bg-white/10"
+                    onClick={() => setPhase("review")}
+                    className="border-white/10 text-slate-300 hover:text-white hover:bg-white/10"
                   >
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Scan Another Bill
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Edit Verified Items
                   </Button>
 
                   <Button
-                    className="w-full sm:flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold"
+                    variant="ghost"
+                    onClick={handleReset}
+                    className="text-xs text-slate-400 hover:text-white"
                   >
-                    Proceed to Split Among Friends
-                    <ArrowRight className="w-4 h-4 ml-2" />
+                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                    Start Over
                   </Button>
                 </div>
               </CardContent>
