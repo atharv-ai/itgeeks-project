@@ -1,4 +1,5 @@
 import os
+import certifi
 from pathlib import Path
 from typing import Optional, Any
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -20,7 +21,7 @@ class MongoDB:
 db_instance = MongoDB()
 
 async def connect_to_mongo():
-    db_instance.client = AsyncIOMotorClient(MONGODB_URL)
+    db_instance.client = AsyncIOMotorClient(MONGODB_URL, tlsCAFile=certifi.where())
     db_instance.db = db_instance.client[DATABASE_NAME]
     db_instance.bill_sessions = db_instance.db["bill_sessions"]
     print(f"Connected to MongoDB at {MONGODB_URL}, database: {DATABASE_NAME}")

@@ -7,45 +7,53 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans:  ["Space Grotesk", "system-ui", "sans-serif"],
+        mono:  ["Space Mono", "monospace"],
+      },
       colors: {
-        border: "var(--border)",
-        input: "var(--input)",
-        ring: "var(--ring)",
-        background: "var(--background)",
-        foreground: "var(--foreground)",
-        primary: {
-          DEFAULT: "var(--primary)",
-          foreground: "var(--primary-foreground)",
-        },
-        secondary: {
-          DEFAULT: "var(--secondary)",
-          foreground: "var(--secondary-foreground)",
-        },
-        destructive: {
-          DEFAULT: "var(--destructive)",
-          foreground: "var(--destructive-foreground)",
-        },
-        muted: {
-          DEFAULT: "var(--muted)",
-          foreground: "var(--muted-foreground)",
-        },
-        accent: {
-          DEFAULT: "var(--accent)",
-          foreground: "var(--accent-foreground)",
-        },
-        popover: {
-          DEFAULT: "var(--popover)",
-          foreground: "var(--popover-foreground)",
-        },
-        card: {
-          DEFAULT: "var(--card)",
-          foreground: "var(--card-foreground)",
-        },
+        /* Design token bridge */
+        background: "var(--bg)",
+        foreground:  "var(--text-primary)",
+        card:        "var(--bg-card)",
+        border:      "var(--border)",
+        input:       "var(--bg-input)",
+        ring:        "var(--border-focus)",
+
+        primary:     { DEFAULT: "var(--brand)", foreground: "#08080e" },
+        secondary:   { DEFAULT: "var(--bg-elevated)", foreground: "var(--text-primary)" },
+        muted:       { DEFAULT: "var(--bg-elevated)", foreground: "var(--text-muted)" },
+        accent:      { DEFAULT: "var(--bg-elevated)", foreground: "var(--text-primary)" },
+        destructive: { DEFAULT: "var(--danger)",  foreground: "#f0eee8" },
+        success:     { DEFAULT: "var(--success)", foreground: "#08080e" },
+
+        brand:       "var(--brand)",
+        violet:      "var(--violet)",
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        sm:  "var(--radius-sm)",
+        DEFAULT: "var(--radius)",
+        lg:  "var(--radius-lg)",
+        xl:  "var(--radius-xl)",
+      },
+      keyframes: {
+        fadeUp: {
+          "0%":   { opacity: "0", transform: "translateY(16px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        shimmer: {
+          "0%":   { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+        pulseDot: {
+          "0%, 100%": { opacity: "1", transform: "scale(1)" },
+          "50%":      { opacity: "0.4", transform: "scale(0.75)" },
+        },
+      },
+      animation: {
+        "fade-up": "fadeUp 0.45s cubic-bezier(0.22,1,0.36,1) both",
+        shimmer:   "shimmer 2.5s infinite",
+        "pulse-dot": "pulseDot 2s ease-in-out infinite",
       },
     },
   },

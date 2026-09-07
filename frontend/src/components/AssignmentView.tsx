@@ -1,20 +1,4 @@
 import React, { useState } from "react"
-import {
-  Users,
-  UserPlus,
-  X,
-  Calculator,
-  ArrowLeft,
-  Check,
-  Split,
-  AlertCircle,
-  Loader2,
-  UserCheck,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import type { Bill, CalculateResponse } from "@/types"
 
 interface AssignmentViewProps {
@@ -26,370 +10,389 @@ interface AssignmentViewProps {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
 
-export function AssignmentView({
-  bill,
-  sessionId,
-  onCalculateComplete,
-  onBackToReview,
-}: AssignmentViewProps) {
-  // Members list with a couple friendly defaults
-  const [members, setMembers] = useState<string[]>(["Alice", "Bob"])
+/* ── SVG Icons ──────────────────────────────── */
+function UsersIcon() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+}
+function UserPlusIcon() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+}
+function XIcon() {
+  return <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+}
+function CheckIcon() {
+  return <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+}
+function BackIcon() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+}
+function CalcIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>
+}
+function SpinnerIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" style={{ animation: "spin 0.8s linear infinite", transformOrigin: "center" }}/></svg>
+}
+function AlertIcon() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+}
+
+/* ── Member color themes ─────────────────────── */
+const MEMBER_COLORS = [
+  { bg: "rgba(99,102,241,0.15)",  border: "rgba(99,102,241,0.35)",  text: "#a5b4fc", dot: "#818cf8" },
+  { bg: "rgba(236,72,153,0.12)",  border: "rgba(236,72,153,0.32)",  text: "#f9a8d4", dot: "#ec4899" },
+  { bg: "rgba(34,197,94,0.12)",   border: "rgba(34,197,94,0.32)",   text: "#86efac", dot: "#22c55e" },
+  { bg: "rgba(234,179,8,0.12)",   border: "rgba(234,179,8,0.32)",   text: "#fde047", dot: "#eab308" },
+  { bg: "rgba(14,165,233,0.12)",  border: "rgba(14,165,233,0.32)",  text: "#7dd3fc", dot: "#0ea5e9" },
+  { bg: "rgba(249,115,22,0.12)",  border: "rgba(249,115,22,0.32)",  text: "#fdba74", dot: "#f97316" },
+]
+
+export function AssignmentView({ bill, sessionId: _sessionId, onCalculateComplete, onBackToReview }: AssignmentViewProps) {
+  const [members, setMembers]           = useState<string[]>(["Alice", "Bob"])
   const [newMemberName, setNewMemberName] = useState("")
-
-  // Mapping from item index (number) to array of member names
-  const [assignments, setAssignments] = useState<Record<number, string[]>>(() => {
-    // By default, initially assign all items to all initial members or empty
-    const initial: Record<number, string[]> = {}
-    bill.items.forEach((_, idx) => {
-      initial[idx] = []
-    })
-    return initial
+  const [assignments, setAssignments]   = useState<Record<number, string[]>>(() => {
+    const init: Record<number, string[]> = {}
+    bill.items.forEach((_, idx) => { init[idx] = [] })
+    return init
   })
-
   const [isCalculating, setIsCalculating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError]               = useState<string | null>(null)
 
-  // Member Management
   const handleAddMember = (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     const trimmed = newMemberName.trim()
     if (!trimmed) return
-
-    if (members.some((m) => m.toLowerCase() === trimmed.toLowerCase())) {
-      setError(`"${trimmed}" is already in the members list.`)
+    if (members.some(m => m.toLowerCase() === trimmed.toLowerCase())) {
+      setError(`"${trimmed}" is already in the list.`)
       return
     }
-
-    setMembers((prev) => [...prev, trimmed])
+    setMembers(prev => [...prev, trimmed])
     setNewMemberName("")
     setError(null)
   }
 
-  const handleRemoveMember = (nameToRemove: string) => {
-    if (members.length <= 1) {
-      setError("You must have at least one member to split the bill.")
-      return
-    }
-
-    setMembers((prev) => prev.filter((m) => m !== nameToRemove))
-    // Remove this member from all item assignments
-    setAssignments((prev) => {
+  const handleRemoveMember = (name: string) => {
+    if (members.length <= 1) { setError("You need at least one member."); return }
+    setMembers(prev => prev.filter(m => m !== name))
+    setAssignments(prev => {
       const next = { ...prev }
-      Object.keys(next).forEach((key) => {
-        const idx = Number(key)
-        next[idx] = (next[idx] || []).filter((m) => m !== nameToRemove)
+      Object.keys(next).forEach(key => {
+        next[Number(key)] = (next[Number(key)] || []).filter(m => m !== name)
       })
       return next
     })
   }
 
-  // Toggle item assignment for a member
-  const toggleMemberForItem = (itemIndex: number, memberName: string) => {
-    setAssignments((prev) => {
-      const currentList = prev[itemIndex] || []
-      const isAssigned = currentList.includes(memberName)
-      const nextList = isAssigned
-        ? currentList.filter((m) => m !== memberName)
-        : [...currentList, memberName]
-
+  const toggleMemberForItem = (itemIdx: number, memberName: string) => {
+    setAssignments(prev => {
+      const curr = prev[itemIdx] || []
       return {
         ...prev,
-        [itemIndex]: nextList,
+        [itemIdx]: curr.includes(memberName)
+          ? curr.filter(m => m !== memberName)
+          : [...curr, memberName]
       }
     })
   }
 
-  // Select all members for an item
-  const handleSelectAllForItem = (itemIndex: number) => {
-    setAssignments((prev) => {
-      const currentList = prev[itemIndex] || []
-      const allSelected = currentList.length === members.length
-      return {
-        ...prev,
-        [itemIndex]: allSelected ? [] : [...members],
-      }
+  const handleSelectAllForItem = (itemIdx: number) => {
+    setAssignments(prev => {
+      const curr = prev[itemIdx] || []
+      const allSelected = curr.length === members.length
+      return { ...prev, [itemIdx]: allSelected ? [] : [...members] }
     })
   }
 
   const handleCalculateSplit = async () => {
     setError(null)
-
-    if (members.length === 0) {
-      setError("Please add at least one member before calculating.")
-      return
-    }
-
-    // Check if any items are unassigned
-    const unassignedCount = bill.items.filter(
-      (_, idx) => (!assignments[idx] || assignments[idx].length === 0)
-    ).length
-
-    if (unassignedCount > 0) {
-      setError(
-        `${unassignedCount} item${unassignedCount > 1 ? "s are" : " is"} not assigned to anyone yet. Please assign all items so the entire bill is covered.`
-      )
+    if (members.length === 0) { setError("Please add at least one member."); return }
+    const unassigned = bill.items.filter((_, idx) => !assignments[idx]?.length).length
+    if (unassigned > 0) {
+      setError(`${unassigned} item${unassigned > 1 ? "s are" : " is"} not assigned yet. Assign all items first.`)
       return
     }
 
     setIsCalculating(true)
-
     try {
-      // Convert assignments keys to string to match JSON spec
       const formattedAssignments: Record<string, string[]> = {}
-      Object.entries(assignments).forEach(([idx, assignedList]) => {
-        formattedAssignments[idx] = assignedList
-      })
-
-      const payload = {
-        bill,
-        members,
-        item_assignments: formattedAssignments,
-        session_id: sessionId,
-      }
-
+      Object.entries(assignments).forEach(([idx, list]) => { formattedAssignments[idx] = list })
+      const payload = { bill, members, item_assignments: formattedAssignments, session_id: _sessionId }
       const response = await fetch(`${API_BASE_URL}/api/calculate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payload)
       })
-
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}))
-        throw new Error(errData.detail || `Server returned error ${response.status}`)
+        throw new Error(errData.detail || `Server error ${response.status}`)
       }
-
       const data: CalculateResponse = await response.json()
       onCalculateComplete(data)
     } catch (err: any) {
-      setError(err.message || "Failed to calculate split. Please ensure backend is running.")
+      setError(err.message || "Failed to calculate. Check that the backend is running.")
     } finally {
       setIsCalculating(false)
     }
   }
 
-  // Palette of subtle distinct colors for member badges
-  const memberColors = [
-    "from-indigo-500 to-purple-600 border-indigo-400/40 text-indigo-100",
-    "from-emerald-500 to-teal-600 border-emerald-400/40 text-emerald-100",
-    "from-amber-500 to-orange-600 border-amber-400/40 text-amber-100",
-    "from-cyan-500 to-blue-600 border-cyan-400/40 text-cyan-100",
-    "from-rose-500 to-pink-600 border-rose-400/40 text-rose-100",
-    "from-violet-500 to-fuchsia-600 border-violet-400/40 text-violet-100",
-  ]
+  const totalAssigned = bill.items.filter((_, idx) => assignments[idx]?.length > 0).length
+  const assignedFraction = bill.items.length > 0 ? totalAssigned / bill.items.length : 0
+
+  const S = {
+    card: { borderRadius: 20, background: "var(--bg-card)", border: "1px solid var(--border)", overflow: "hidden" } as React.CSSProperties,
+    section: { padding: "20px 24px" } as React.CSSProperties,
+    label: { fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--text-muted)" },
+  }
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
-      <Card className="border-white/10 bg-slate-900/60 backdrop-blur-xl shadow-2xl text-slate-100 overflow-hidden">
-        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <Split className="w-5 h-5 text-indigo-400" />
-              <CardTitle className="text-xl text-white">Assign Items to Members</CardTitle>
-            </div>
-            <CardDescription className="text-slate-400 text-xs mt-1">
-              Select who shared each line item. Shared items divide cost equally among tagged members.
-            </CardDescription>
-          </div>
+    <div className="fade-up" style={{ width: "100%", maxWidth: 860, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
 
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-white/5 border-white/10 text-xs font-mono">
+      {/* ── Progress header ── */}
+      <div style={S.card}>
+        <div style={{ padding: "20px 24px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
+            <div>
+              <h2 style={{ margin: 0, fontWeight: 700, fontSize: 20, letterSpacing: "-0.02em", color: "var(--text-primary)" }}>
+                Assign items to members
+              </h2>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
+                Select who had each item — shared items split evenly
+              </p>
+            </div>
+            <div style={{
+              padding: "6px 14px", borderRadius: 8,
+              background: "rgba(255,178,50,0.08)", border: "1px solid rgba(255,178,50,0.2)",
+              fontFamily: "'Space Mono'", fontSize: 13, fontWeight: 700, color: "var(--brand)"
+            }}>
               Total: ${bill.total.toFixed(2)}
-            </Badge>
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-6">
-          {/* Member Management Section */}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                <Users className="w-4 h-4 text-indigo-400" />
-                <span>Group Members ({members.length})</span>
-              </div>
-              <span className="text-[11px] text-slate-500 hidden sm:inline">Click &times; to remove a member</span>
             </div>
-
-            {/* Members Chips */}
-            <div className="flex flex-wrap items-center gap-2">
-              {members.map((member, index) => {
-                const colorClass = memberColors[index % memberColors.length]
-                return (
-                  <div
-                    key={member}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border bg-gradient-to-r shadow-xs ${colorClass}`}
-                  >
-                    <UserCheck className="w-3.5 h-3.5 opacity-80" />
-                    <span>{member}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveMember(member)}
-                      className="ml-1 text-white/70 hover:text-white rounded-full p-0.5 hover:bg-white/20 transition-colors"
-                      title={`Remove ${member}`}
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Add Member Form */}
-            <form onSubmit={handleAddMember} className="flex gap-2 max-w-sm">
-              <Input
-                type="text"
-                placeholder="Add friend's name (e.g. Charlie)"
-                value={newMemberName}
-                onChange={(e) => setNewMemberName(e.target.value)}
-                className="h-9 bg-slate-950/60 border-white/10 text-slate-100 text-sm placeholder:text-slate-500"
-              />
-              <Button
-                type="submit"
-                size="sm"
-                className="h-9 px-4 bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5"
-              >
-                <UserPlus className="w-4 h-4" />
-                Add
-              </Button>
-            </form>
           </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 flex items-start gap-2.5 text-destructive text-sm animate-in fade-in">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Items Assignment List */}
-          <div className="space-y-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-              <span>Tag Consumers for Each Item</span>
-              <span className="text-[11px] font-normal text-slate-500">
-                Click multiple names if shared
+          {/* Progress bar */}
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={S.label}>Items assigned</span>
+              <span style={{ fontFamily: "'Space Mono'", fontSize: 11, color: totalAssigned === bill.items.length ? "var(--success)" : "var(--text-muted)" }}>
+                {totalAssigned}/{bill.items.length}
               </span>
             </div>
-
-            <div className="space-y-3">
-              {bill.items.map((item, idx) => {
-                const assignedList = assignments[idx] || []
-                const numAssigned = assignedList.length
-                const perPersonCost = numAssigned > 0 ? item.price / numAssigned : 0
-                const isAllSelected = numAssigned === members.length
-
-                return (
-                  <div
-                    key={idx}
-                    className={`rounded-xl border p-4 transition-all duration-150 space-y-3 ${
-                      numAssigned === 0
-                        ? "border-amber-500/40 bg-amber-500/[0.02]"
-                        : "border-white/10 bg-white/[0.02] hover:border-white/20"
-                    }`}
-                  >
-                    {/* Item Header Info */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-mono text-slate-500 w-5">#{idx + 1}</span>
-                        <div>
-                          <span className="text-sm font-semibold text-white">{item.name}</span>
-                          <span className="text-xs text-slate-400 ml-2 font-mono">
-                            Qty: {item.quantity}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 self-end sm:self-auto">
-                        <span className="text-sm font-bold text-white font-mono">
-                          ${item.price.toFixed(2)}
-                        </span>
-
-                        {numAssigned > 0 && (
-                          <Badge
-                            variant="secondary"
-                            className="text-[11px] bg-indigo-500/15 text-indigo-300 border-indigo-500/30"
-                          >
-                            ${perPersonCost.toFixed(2)} / person ({numAssigned})
-                          </Badge>
-                        )}
-
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleSelectAllForItem(idx)}
-                          className="h-7 text-xs text-slate-400 hover:text-white hover:bg-white/10"
-                        >
-                          {isAllSelected ? "Deselect All" : "All"}
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Member Toggles */}
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {members.map((member) => {
-                        const isSelected = assignedList.includes(member)
-
-                        return (
-                          <button
-                            key={member}
-                            type="button"
-                            onClick={() => toggleMemberForItem(idx, member)}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-150 cursor-pointer ${
-                              isSelected
-                                ? "bg-indigo-600 text-white border-indigo-500 shadow-sm shadow-indigo-600/30 scale-100"
-                                : "bg-slate-950/40 text-slate-400 border-white/10 hover:border-white/20 hover:text-slate-200"
-                            }`}
-                          >
-                            <span
-                              className={`w-3.5 h-3.5 rounded-full flex items-center justify-center border text-[9px] ${
-                                isSelected
-                                  ? "bg-white text-indigo-600 border-white"
-                                  : "border-slate-600"
-                              }`}
-                            >
-                              {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                            </span>
-                            <span>{member}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })}
+            <div style={{ height: 5, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 99,
+                width: `${assignedFraction * 100}%`,
+                background: assignedFraction === 1
+                  ? "var(--success)"
+                  : "linear-gradient(90deg, var(--brand), #ff6b32)",
+                transition: "width 0.35s cubic-bezier(0.22,1,0.36,1)"
+              }} />
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Action Footer */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-white/10">
-            <Button
-              variant="outline"
-              onClick={onBackToReview}
-              className="w-full sm:w-auto border-white/10 text-slate-300 hover:text-white hover:bg-white/10"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Review Items
-            </Button>
-
-            <Button
-              onClick={handleCalculateSplit}
-              disabled={isCalculating}
-              className="w-full sm:w-auto px-8 h-12 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold text-base shadow-lg shadow-indigo-500/20"
-            >
-              {isCalculating ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  Calculating Proportional Split...
-                </>
-              ) : (
-                <>
-                  <Calculator className="w-5 h-5 mr-2" />
-                  Calculate Split
-                </>
-              )}
-            </Button>
+      {/* ── Members panel ── */}
+      <div style={S.card}>
+        <div style={S.section}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <span style={{ color: "var(--brand)" }}><UsersIcon /></span>
+            <span style={S.label}>Group members ({members.length})</span>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* Chips */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+            {members.map((member, idx) => {
+              const c = MEMBER_COLORS[idx % MEMBER_COLORS.length]
+              return (
+                <div key={member} style={{
+                  display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 10px 6px 8px",
+                  borderRadius: 99, border: `1px solid ${c.border}`, background: c.bg,
+                  fontWeight: 600, fontSize: 13, color: c.text
+                }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: c.dot, flexShrink: 0 }} />
+                  {member}
+                  <button
+                    onClick={() => handleRemoveMember(member)}
+                    style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      color: c.text, opacity: 0.6, padding: 2, display: "flex",
+                      alignItems: "center", justifyContent: "center",
+                      borderRadius: 4, transition: "opacity 0.15s"
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                    onMouseLeave={e => (e.currentTarget.style.opacity = "0.6")}
+                    title={`Remove ${member}`}
+                  >
+                    <XIcon />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Add member form */}
+          <form onSubmit={handleAddMember} style={{ display: "flex", gap: 8, maxWidth: 340 }}>
+            <input
+              className="ss-input"
+              type="text"
+              placeholder="Add a name (e.g. Charlie)"
+              value={newMemberName}
+              onChange={e => setNewMemberName(e.target.value)}
+              style={{ flex: 1, height: 38 }}
+            />
+            <button type="submit" className="ss-btn-primary" style={{ height: 38, padding: "0 14px", flexShrink: 0 }}>
+              <UserPlusIcon /> Add
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* ── Error ── */}
+      {error && (
+        <div className="fade-up" style={{
+          borderRadius: 12, background: "var(--danger-bg)",
+          border: "1px solid rgba(248,113,113,0.25)",
+          padding: "12px 16px", display: "flex", alignItems: "flex-start", gap: 10,
+          color: "var(--danger)"
+        }}>
+          <AlertIcon />
+          <span style={{ fontSize: 13, fontWeight: 500 }}>{error}</span>
+        </div>
+      )}
+
+      {/* ── Item assignment list ── */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {bill.items.map((item, idx) => {
+          const assigned = assignments[idx] || []
+          const numAssigned = assigned.length
+          const perPerson = numAssigned > 0 ? item.price / numAssigned : 0
+          const isAllSelected = numAssigned === members.length
+          const isUnassigned = numAssigned === 0
+
+          return (
+            <div
+              key={idx}
+              className="fade-up"
+              style={{
+                animationDelay: `${idx * 0.04}s`,
+                borderRadius: 16, background: "var(--bg-card)",
+                border: `1px solid ${isUnassigned ? "rgba(245,158,11,0.35)" : "var(--border)"}`,
+                padding: "14px 18px",
+                transition: "border-color 0.2s"
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{
+                    fontFamily: "'Space Mono'", fontSize: 10, color: "var(--text-muted)",
+                    background: "rgba(255,255,255,0.04)", padding: "2px 6px", borderRadius: 4,
+                    border: "1px solid var(--border)", flexShrink: 0
+                  }}>
+                    #{idx + 1}
+                  </span>
+                  <div>
+                    <span style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>{item.name}</span>
+                    <span style={{ fontFamily: "'Space Mono'", fontSize: 11, color: "var(--text-muted)", marginLeft: 8 }}>
+                      ×{item.quantity}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontFamily: "'Space Mono'", fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>
+                    ${item.price.toFixed(2)}
+                  </span>
+                  {numAssigned > 0 && (
+                    <span style={{
+                      fontFamily: "'Space Mono'", fontSize: 11,
+                      padding: "3px 8px", borderRadius: 6,
+                      background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)",
+                      color: "#c4b5fd"
+                    }}>
+                      ${perPerson.toFixed(2)}/person
+                    </span>
+                  )}
+                  <button
+                    onClick={() => handleSelectAllForItem(idx)}
+                    style={{
+                      background: isAllSelected ? "rgba(255,178,50,0.1)" : "none",
+                      border: `1px solid ${isAllSelected ? "rgba(255,178,50,0.3)" : "var(--border)"}`,
+                      borderRadius: 6, padding: "3px 10px", cursor: "pointer",
+                      fontSize: 11, fontWeight: 600,
+                      color: isAllSelected ? "var(--brand)" : "var(--text-muted)",
+                      transition: "all 0.15s"
+                    }}
+                  >
+                    {isAllSelected ? "Clear" : "All"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Member toggles */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {members.map((member, mIdx) => {
+                  const isSelected = assigned.includes(member)
+                  const c = MEMBER_COLORS[mIdx % MEMBER_COLORS.length]
+                  return (
+                    <button
+                      key={member}
+                      type="button"
+                      onClick={() => toggleMemberForItem(idx, member)}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "6px 12px", borderRadius: 8, cursor: "pointer",
+                        fontWeight: 600, fontSize: 12,
+                        background: isSelected ? c.bg : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${isSelected ? c.border : "var(--border)"}`,
+                        color: isSelected ? c.text : "var(--text-muted)",
+                        transition: "all 0.15s",
+                        transform: isSelected ? "scale(1.02)" : "scale(1)"
+                      }}
+                    >
+                      <span style={{
+                        width: 16, height: 16, borderRadius: "50%",
+                        border: `2px solid ${isSelected ? c.dot : "rgba(255,255,255,0.15)"}`,
+                        background: isSelected ? c.dot : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        flexShrink: 0, transition: "all 0.15s"
+                      }}>
+                        {isSelected && <span style={{ color: "#08080e" }}><CheckIcon /></span>}
+                      </span>
+                      {member}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {isUnassigned && (
+                <div style={{ marginTop: 8, fontSize: 11, color: "var(--warning)", fontWeight: 500 }}>
+                  ⚠ Assign this item to at least one person
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ── Footer ── */}
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        gap: 12, flexWrap: "wrap", paddingTop: 4
+      }}>
+        <button className="ss-btn-ghost" onClick={onBackToReview}>
+          <BackIcon /> Back to review
+        </button>
+        <button
+          className="ss-btn-primary"
+          onClick={handleCalculateSplit}
+          disabled={isCalculating}
+          style={{ height: 46, padding: "0 28px", fontSize: 14 }}
+        >
+          {isCalculating ? (
+            <><SpinnerIcon /> Calculating...</>
+          ) : (
+            <><CalcIcon /> Calculate split</>
+          )}
+        </button>
+      </div>
     </div>
   )
 }

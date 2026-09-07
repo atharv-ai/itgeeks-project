@@ -1,17 +1,31 @@
 import { useState } from "react"
-import { Receipt } from "lucide-react"
 import { UploadView } from "@/components/UploadView"
 import { ReviewView } from "@/components/ReviewView"
 import { AssignmentView } from "@/components/AssignmentView"
 import { ResultView } from "@/components/ResultView"
-import { Badge } from "@/components/ui/badge"
 import type { Bill, CalculateResponse } from "@/types"
 
 type AppPhase = "upload" | "review" | "assignment" | "result"
 
+const STEPS: { id: AppPhase; label: string; short: string }[] = [
+  { id: "upload",     label: "Upload",  short: "01" },
+  { id: "review",     label: "Review",  short: "02" },
+  { id: "assignment", label: "Assign",  short: "03" },
+  { id: "result",     label: "Result",  short: "04" },
+]
+
+function ReceiptIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+      <path d="M16 8H8M16 12H8M12 16H8" />
+    </svg>
+  )
+}
+
 export function App() {
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [billData, setBillData] = useState<Bill | null>(null)
+  const [billData, setBillData]   = useState<Bill | null>(null)
   const [splitResult, setSplitResult] = useState<CalculateResponse | null>(null)
   const [phase, setPhase] = useState<AppPhase>("upload")
 
@@ -38,69 +52,172 @@ export function App() {
     setPhase("upload")
   }
 
+  const phaseIndex = STEPS.findIndex(s => s.id === phase)
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100 flex flex-col selection:bg-primary selection:text-white">
-      {/* Top Navbar */}
-      <header className="border-b border-white/10 bg-slate-950/70 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={handleReset}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-emerald-400 p-0.5 shadow-lg shadow-indigo-500/20">
-              <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <Receipt className="w-5 h-5 text-emerald-400" />
-              </div>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
+      {/* ── Ambient glow orbs ────────────────── */}
+      <div aria-hidden style={{
+        position: "fixed", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 0
+      }}>
+        <div style={{
+          position: "absolute", top: "-15%", left: "5%",
+          width: 500, height: 500, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(255,178,50,0.07) 0%, transparent 70%)",
+          filter: "blur(40px)"
+        }} />
+        <div style={{
+          position: "absolute", bottom: "10%", right: "0%",
+          width: 400, height: 400, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)",
+          filter: "blur(40px)"
+        }} />
+      </div>
+
+      {/* ── Navbar ───────────────────────────── */}
+      <header style={{
+        position: "sticky", top: 0, zIndex: 50,
+        borderBottom: "1px solid var(--border)",
+        background: "rgba(8,8,14,0.85)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)"
+      }}>
+        <div style={{
+          maxWidth: 1100, margin: "0 auto", padding: "0 20px",
+          height: 60, display: "flex", alignItems: "center", justifyContent: "space-between"
+        }}>
+          {/* Logo */}
+          <button
+            onClick={handleReset}
+            style={{
+              display: "flex", alignItems: "center", gap: 10,
+              background: "none", border: "none", cursor: "pointer", padding: 0
+            }}
+          >
+            <div style={{
+              width: 34, height: 34, borderRadius: 10,
+              background: "var(--brand)", display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#08080e", flexShrink: 0
+            }}>
+              <ReceiptIcon />
             </div>
-            <div>
-              <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-                SplitSnap AI
+            <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+              <span style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 16, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
+                SplitSnap
               </span>
-              <span className="text-[10px] font-mono text-emerald-400 ml-2 px-1.5 py-0.5 bg-emerald-500/10 rounded border border-emerald-500/20">
-                Gemini 3.1 Flash Lite
+              <span style={{ fontFamily: "'Space Mono'", fontSize: 9, color: "var(--brand)", opacity: 0.8, letterSpacing: "0.04em" }}>
+                AI ✦ Gemini Flash
               </span>
             </div>
+          </button>
+
+          {/* Steps pill */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 4,
+            padding: "5px 10px", borderRadius: 40,
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid var(--border)"
+          }}>
+            {STEPS.map((step, idx) => {
+              const done   = idx < phaseIndex
+              const active = idx === phaseIndex
+              return (
+                <div key={step.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <div
+                    className={`step-dot ${active ? "step-dot-active" : done ? "step-dot-done" : "step-dot-idle"}`}
+                    title={step.label}
+                  >
+                    {done ? "✓" : step.short}
+                  </div>
+                  {idx < STEPS.length - 1 && (
+                    <div style={{ width: 16, height: 1, background: active || done ? "rgba(255,178,50,0.3)" : "var(--border)" }} />
+                  )}
+                </div>
+              )
+            })}
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Live dot */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {sessionId && (
-              <Badge variant="outline" className="bg-white/5 border-white/10 text-xs font-mono">
-                Session: {sessionId.slice(-6)}
-              </Badge>
+              <span style={{
+                fontFamily: "'Space Mono'", fontSize: 10, color: "var(--text-muted)",
+                padding: "3px 8px", borderRadius: 4, background: "rgba(255,255,255,0.03)",
+                border: "1px solid var(--border)"
+              }}>
+                #{sessionId.slice(-5)}
+              </span>
             )}
-
-            {/* Stepper Pill Indicator */}
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-medium text-slate-400">
-              <span className={phase === "upload" ? "text-emerald-400 font-bold" : "text-slate-500"}>1. Upload</span>
-              <span>&rsaquo;</span>
-              <span className={phase === "review" ? "text-emerald-400 font-bold" : "text-slate-500"}>2. Review</span>
-              <span>&rsaquo;</span>
-              <span className={phase === "assignment" ? "text-emerald-400 font-bold" : "text-slate-500"}>3. Assign</span>
-              <span>&rsaquo;</span>
-              <span className={phase === "result" ? "text-emerald-400 font-bold" : "text-slate-500"}>4. Result</span>
-            </div>
-
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="pulse-dot" style={{
+              width: 7, height: 7, borderRadius: "50%",
+              background: "var(--success)"
+            }} />
           </div>
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col items-center">
-        {/* Phase 1: Upload View */}
+      {/* ── Main ─────────────────────────────── */}
+      <main style={{
+        flex: 1, position: "relative", zIndex: 1,
+        maxWidth: 1100, width: "100%", margin: "0 auto",
+        padding: "48px 20px"
+      }}>
         {phase === "upload" && (
-          <div className="w-full max-w-2xl space-y-8 animate-in fade-in duration-300">
-            <div className="text-center space-y-3">
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
-                Split Any Bill in Seconds
+          <div className="fade-up" style={{ width: "100%", maxWidth: 680, margin: "0 auto" }}>
+            {/* Hero text */}
+            <div style={{ textAlign: "center", marginBottom: 40 }}>
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "4px 12px 4px 8px", borderRadius: 40,
+                background: "var(--brand-dim)", border: "1px solid rgba(255,178,50,0.2)",
+                marginBottom: 20
+              }}>
+                <span style={{ fontSize: 11, background: "var(--brand)", color: "#08080e", borderRadius: 40, padding: "1px 6px", fontWeight: 700 }}>NEW</span>
+                <span style={{ fontSize: 12, color: "var(--brand)", fontFamily: "'Space Mono'" }}>Gemini 2.5 Flash powered extraction</span>
+              </div>
+
+              <h1 style={{
+                fontFamily: "'Space Grotesk'", fontWeight: 700,
+                fontSize: "clamp(2rem, 5vw, 3.2rem)", lineHeight: 1.1,
+                letterSpacing: "-0.03em", color: "var(--text-primary)",
+                margin: "0 0 14px"
+              }}>
+                Split any bill,{" "}
+                <span className="text-brand-gradient">no arguments.</span>
               </h1>
-              <p className="text-slate-400 text-sm sm:text-base max-w-md mx-auto">
-                Snap or upload your restaurant receipt photo. Our AI extracts line items, quantities, and taxes with sub-second accuracy.
+              <p style={{
+                fontSize: 16, color: "var(--text-secondary)", maxWidth: 420,
+                margin: "0 auto", lineHeight: 1.7
+              }}>
+                Snap or upload your receipt. Our AI extracts every line item
+                instantly — then you assign and split fairly.
               </p>
             </div>
 
             <UploadView onScanComplete={handleScanComplete} />
+
+            {/* Feature strip */}
+            <div style={{
+              display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 32
+            }}>
+              {[
+                { emoji: "⚡", text: "Sub-second AI scan" },
+                { emoji: "✏️", text: "Editable line items" },
+                { emoji: "⚖️", text: "Proportional splits" },
+              ].map(f => (
+                <div key={f.text} style={{
+                  display: "flex", alignItems: "center", gap: 10, padding: "12px 14px",
+                  borderRadius: 12, background: "rgba(255,255,255,0.02)",
+                  border: "1px solid var(--border)"
+                }}>
+                  <span style={{ fontSize: 18 }}>{f.emoji}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 500 }}>{f.text}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Phase 2: Review View */}
         {phase === "review" && billData && sessionId && (
           <ReviewView
             initialBill={billData}
@@ -110,7 +227,6 @@ export function App() {
           />
         )}
 
-        {/* Phase 3: Assignment View */}
         {phase === "assignment" && billData && sessionId && (
           <AssignmentView
             bill={billData}
@@ -120,7 +236,6 @@ export function App() {
           />
         )}
 
-        {/* Phase 4: Result View */}
         {phase === "result" && splitResult && (
           <ResultView
             result={splitResult}
@@ -129,6 +244,16 @@ export function App() {
           />
         )}
       </main>
+
+      {/* ── Footer ───────────────────────────── */}
+      <footer style={{
+        borderTop: "1px solid var(--border)", padding: "16px 20px",
+        textAlign: "center", position: "relative", zIndex: 1
+      }}>
+        <span style={{ fontFamily: "'Space Mono'", fontSize: 11, color: "var(--text-muted)" }}>
+          SplitSnap © 2026 — Built with Gemini Flash
+        </span>
+      </footer>
     </div>
   )
 }
