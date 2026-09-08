@@ -1,11 +1,10 @@
 import { useState, useRef } from "react"
 import type { Bill, ExtractResponse, SelectedFile } from "@/types"
+import { apiFetch } from "@/lib/api"
 
 interface UploadViewProps {
   onScanComplete: (sessionId: string, data: Bill) => void
 }
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
 
 /* ── Mini icon components ──────────────────────── */
 function UploadIcon() {
@@ -97,7 +96,7 @@ export function UploadView({ onScanComplete }: UploadViewProps) {
       const formData = new FormData()
       selectedFiles.forEach(({ file }) => formData.append("files", file))
       formData.append("session_name", `Bill - ${new Date().toLocaleDateString()}`)
-      const response = await fetch(`${API_BASE_URL}/api/extract`, { method: "POST", body: formData })
+      const response = await apiFetch("/api/extract", { method: "POST", body: formData })
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.detail || `Server returned status ${response.status}`)

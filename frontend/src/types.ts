@@ -57,3 +57,12 @@ export interface CalculateResponse {
   total_discounts: number
   grand_total: number
 }
+
+export interface BillSummary {
+  session_id: string
+  session_name: string
+  status: string
+  created_at: string
+  grand_total?: number | null
+  member_count?: number | null
+}

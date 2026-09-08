@@ -1,5 +1,6 @@
 import React, { useState } from "react"
 import type { Bill, CalculateResponse } from "@/types"
+import { apiFetch } from "@/lib/api"
 
 interface AssignmentViewProps {
   bill: Bill
@@ -8,7 +9,7 @@ interface AssignmentViewProps {
   onBackToReview: () => void
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
+
 
 /* ── SVG Icons ──────────────────────────────── */
 function UsersIcon() {
@@ -118,10 +119,9 @@ export function AssignmentView({ bill, sessionId: _sessionId, onCalculateComplet
       const formattedAssignments: Record<string, string[]> = {}
       Object.entries(assignments).forEach(([idx, list]) => { formattedAssignments[idx] = list })
       const payload = { bill, members, item_assignments: formattedAssignments, session_id: _sessionId }
-      const response = await fetch(`${API_BASE_URL}/api/calculate`, {
+      const response = await apiFetch("/api/calculate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        json: payload,
       })
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}))

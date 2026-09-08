@@ -3,9 +3,13 @@ import { UploadView } from "@/components/UploadView"
 import { ReviewView } from "@/components/ReviewView"
 import { AssignmentView } from "@/components/AssignmentView"
 import { ResultView } from "@/components/ResultView"
+import { AuthView } from "@/components/AuthView"
+import { DashboardView } from "@/components/DashboardView"
+import { isAuthenticated, clearToken, getStoredEmail } from "@/lib/auth"
 import type { Bill, CalculateResponse } from "@/types"
 
 type AppPhase = "upload" | "review" | "assignment" | "result"
+type AuthPhase = "auth" | "dashboard" | "app"
 
 const STEPS: { id: AppPhase; label: string; short: string }[] = [
   { id: "upload",     label: "Upload",  short: "01" },
@@ -22,8 +26,32 @@ function ReceiptIcon() {
     </svg>
   )
 }
+function LogOutIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  )
+}
+function DashboardNavIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+      <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+    </svg>
+  )
+}
 
 export function App() {
+  // ── Auth state ────────────────────────────────────────────────
+  const [authPhase, setAuthPhase] = useState<AuthPhase>(() =>
+    isAuthenticated() ? "dashboard" : "auth"
+  )
+  const [userEmail, setUserEmail] = useState<string>(() => getStoredEmail() ?? "")
+
+  // ── Bill-splitter flow state ──────────────────────────────────
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [billData, setBillData]   = useState<Bill | null>(null)
   const [splitResult, setSplitResult] = useState<CalculateResponse | null>(null)
@@ -31,6 +59,36 @@ export function App() {
   const [payerName, setPayerName] = useState<string>("")
   const [payerUpiId, setPayerUpiId] = useState<string>("")
 
+  // ── Auth handlers ─────────────────────────────────────────────
+  const handleAuthSuccess = (_token: string, email: string) => {
+    setUserEmail(email)
+    setAuthPhase("dashboard")
+  }
+
+  const handleLogout = () => {
+    clearToken()
+    setUserEmail("")
+    setAuthPhase("auth")
+    // Also reset bill flow
+    setSessionId(null)
+    setBillData(null)
+    setSplitResult(null)
+    setPhase("upload")
+    setPayerName("")
+    setPayerUpiId("")
+  }
+
+  const handleStartNewBill = () => {
+    setSessionId(null)
+    setBillData(null)
+    setSplitResult(null)
+    setPhase("upload")
+    setPayerName("")
+    setPayerUpiId("")
+    setAuthPhase("app")
+  }
+
+  // ── Bill-flow handlers ────────────────────────────────────────
   const handleScanComplete = (id: string, data: Bill) => {
     setSessionId(id)
     setBillData(data)
@@ -56,210 +114,196 @@ export function App() {
     setPayerName("")
     setPayerUpiId("")
     setPhase("upload")
+    // Go back to dashboard after scanning
+    setAuthPhase("dashboard")
+  }
+
+  // ── Auth gate ─────────────────────────────────────────────────
+  if (authPhase === "auth") {
+    return <AuthView onAuthSuccess={handleAuthSuccess} />
   }
 
   const phaseIndex = STEPS.findIndex(s => s.id === phase)
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
-      {/* ── Ambient glow orbs ────────────────── */}
-      <div aria-hidden style={{
-        position: "fixed", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 0
-      }}>
-        <div style={{
-          position: "absolute", top: "-15%", left: "5%",
-          width: 500, height: 500, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(255,178,50,0.07) 0%, transparent 70%)",
-          filter: "blur(40px)"
-        }} />
-        <div style={{
-          position: "absolute", bottom: "10%", right: "0%",
-          width: 400, height: 400, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)",
-          filter: "blur(40px)"
-        }} />
+      {/* ── Ambient glow orbs ── */}
+      <div aria-hidden style={{ position: "fixed", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 0 }}>
+        <div style={{ position: "absolute", top: "-15%", left: "5%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,178,50,0.07) 0%, transparent 70%)", filter: "blur(40px)" }} />
+        <div style={{ position: "absolute", bottom: "10%", right: "0%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)", filter: "blur(40px)" }} />
       </div>
 
-      {/* ── Navbar ───────────────────────────── */}
-      <header style={{
-        position: "sticky", top: 0, zIndex: 50,
-        borderBottom: "1px solid var(--border)",
-        background: "rgba(8,8,14,0.85)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)"
-      }}>
-        <div style={{
-          maxWidth: 1100, margin: "0 auto", padding: "0 20px",
-          height: 60, display: "flex", alignItems: "center", justifyContent: "space-between"
-        }}>
-          {/* Logo */}
+      {/* ── Navbar ── */}
+      <header style={{ position: "sticky", top: 0, zIndex: 50, borderBottom: "1px solid var(--border)", background: "rgba(8,8,14,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 20px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+
+          {/* Logo — click goes to dashboard */}
           <button
-            onClick={handleReset}
-            style={{
-              display: "flex", alignItems: "center", gap: 10,
-              background: "none", border: "none", cursor: "pointer", padding: 0
-            }}
+            onClick={() => setAuthPhase("dashboard")}
+            style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0 }}
           >
-            <div style={{
-              width: 34, height: 34, borderRadius: 10,
-              background: "var(--brand)", display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#08080e", flexShrink: 0
-            }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--brand)", display: "flex", alignItems: "center", justifyContent: "center", color: "#08080e", flexShrink: 0 }}>
               <ReceiptIcon />
             </div>
             <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
-              <span style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 16, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
-                SplitSnap
-              </span>
-              <span style={{ fontFamily: "'Space Mono'", fontSize: 9, color: "var(--brand)", opacity: 0.8, letterSpacing: "0.04em" }}>
-                AI ✦ Gemini Flash
-              </span>
+              <span style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 16, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>SplitSnap</span>
+              <span style={{ fontFamily: "'Space Mono'", fontSize: 9, color: "var(--brand)", opacity: 0.8, letterSpacing: "0.04em" }}>AI ✦ Gemini Flash</span>
             </div>
           </button>
 
-          {/* Steps pill */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: 4,
-            padding: "5px 10px", borderRadius: 40,
-            background: "rgba(255,255,255,0.03)",
-            border: "1px solid var(--border)"
-          }}>
-            {STEPS.map((step, idx) => {
-              const done   = idx < phaseIndex
-              const active = idx === phaseIndex
-              return (
-                <div key={step.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <div
-                    className={`step-dot ${active ? "step-dot-active" : done ? "step-dot-done" : "step-dot-idle"}`}
-                    title={step.label}
-                  >
-                    {done ? "✓" : step.short}
+          {/* Center — step pill (only in app flow) */}
+          {authPhase === "app" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 40, background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)" }}>
+              {STEPS.map((step, idx) => {
+                const done   = idx < phaseIndex
+                const active = idx === phaseIndex
+                return (
+                  <div key={step.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <div className={`step-dot ${active ? "step-dot-active" : done ? "step-dot-done" : "step-dot-idle"}`} title={step.label}>
+                      {done ? "✓" : step.short}
+                    </div>
+                    {idx < STEPS.length - 1 && (
+                      <div style={{ width: 16, height: 1, background: active || done ? "rgba(255,178,50,0.3)" : "var(--border)" }} />
+                    )}
                   </div>
-                  {idx < STEPS.length - 1 && (
-                    <div style={{ width: 16, height: 1, background: active || done ? "rgba(255,178,50,0.3)" : "var(--border)" }} />
-                  )}
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          )}
 
-          {/* Live dot */}
+          {/* Right side — user + nav actions */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {sessionId && (
-              <span style={{
-                fontFamily: "'Space Mono'", fontSize: 10, color: "var(--text-muted)",
-                padding: "3px 8px", borderRadius: 4, background: "rgba(255,255,255,0.03)",
-                border: "1px solid var(--border)"
-              }}>
+            {sessionId && authPhase === "app" && (
+              <span style={{ fontFamily: "'Space Mono'", fontSize: 10, color: "var(--text-muted)", padding: "3px 8px", borderRadius: 4, background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)" }}>
                 #{sessionId.slice(-5)}
               </span>
             )}
-            <div className="pulse-dot" style={{
-              width: 7, height: 7, borderRadius: "50%",
-              background: "var(--success)"
-            }} />
+
+            {/* Dashboard button */}
+            <button
+              id="nav-dashboard"
+              className="ss-btn-ghost"
+              onClick={() => setAuthPhase("dashboard")}
+              style={{ height: 32, padding: "0 12px", fontSize: 12 }}
+              title="My Bills"
+            >
+              <DashboardNavIcon />
+              <span style={{ display: window.innerWidth > 500 ? "inline" : "none" }}>My Bills</span>
+            </button>
+
+            {/* User chip */}
+            {userEmail && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: "50%",
+                  background: "rgba(255,178,50,0.15)", border: "1px solid rgba(255,178,50,0.3)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontWeight: 700, fontSize: 12, color: "var(--brand)"
+                }}>
+                  {userEmail.charAt(0).toUpperCase()}
+                </div>
+              </div>
+            )}
+
+            <button
+              id="nav-logout"
+              className="ss-btn-ghost"
+              onClick={handleLogout}
+              style={{ height: 32, padding: "0 12px", fontSize: 12 }}
+              title="Logout"
+            >
+              <LogOutIcon />
+            </button>
+
+            <div className="pulse-dot" style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--success)" }} />
           </div>
         </div>
       </header>
 
-      {/* ── Main ─────────────────────────────── */}
-      <main style={{
-        flex: 1, position: "relative", zIndex: 1,
-        maxWidth: 1100, width: "100%", margin: "0 auto",
-        padding: "48px 20px"
-      }}>
-        {phase === "upload" && (
-          <div className="fade-up" style={{ width: "100%", maxWidth: 680, margin: "0 auto" }}>
-            {/* Hero text */}
-            <div style={{ textAlign: "center", marginBottom: 40 }}>
-              <div style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "4px 12px 4px 8px", borderRadius: 40,
-                background: "var(--brand-dim)", border: "1px solid rgba(255,178,50,0.2)",
-                marginBottom: 20
-              }}>
-                <span style={{ fontSize: 11, background: "var(--brand)", color: "#08080e", borderRadius: 40, padding: "1px 6px", fontWeight: 700 }}>NEW</span>
-                <span style={{ fontSize: 12, color: "var(--brand)", fontFamily: "'Space Mono'" }}>Gemini 2.5 Flash powered extraction</span>
-              </div>
+      {/* ── Main ── */}
+      <main style={{ flex: 1, position: "relative", zIndex: 1, maxWidth: 1100, width: "100%", margin: "0 auto", padding: "48px 20px" }}>
 
-              <h1 style={{
-                fontFamily: "'Space Grotesk'", fontWeight: 700,
-                fontSize: "clamp(2rem, 5vw, 3.2rem)", lineHeight: 1.1,
-                letterSpacing: "-0.03em", color: "var(--text-primary)",
-                margin: "0 0 14px"
-              }}>
-                Split any bill,{" "}
-                <span className="text-brand-gradient">no arguments.</span>
-              </h1>
-              <p style={{
-                fontSize: 16, color: "var(--text-secondary)", maxWidth: 420,
-                margin: "0 auto", lineHeight: 1.7
-              }}>
-                Snap or upload your receipt. Our AI extracts every line item
-                instantly — then you assign and split fairly.
-              </p>
-            </div>
+        {/* Dashboard view */}
+        {authPhase === "dashboard" && (
+          <DashboardView
+            userEmail={userEmail}
+            onStartNewBill={handleStartNewBill}
+            onLogout={handleLogout}
+          />
+        )}
 
-            <UploadView onScanComplete={handleScanComplete} />
+        {/* Bill-splitting flow */}
+        {authPhase === "app" && (
+          <>
+            {phase === "upload" && (
+              <div className="fade-up" style={{ width: "100%", maxWidth: 680, margin: "0 auto" }}>
+                {/* Hero text */}
+                <div style={{ textAlign: "center", marginBottom: 40 }}>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px 4px 8px", borderRadius: 40, background: "var(--brand-dim)", border: "1px solid rgba(255,178,50,0.2)", marginBottom: 20 }}>
+                    <span style={{ fontSize: 11, background: "var(--brand)", color: "#08080e", borderRadius: 40, padding: "1px 6px", fontWeight: 700 }}>NEW</span>
+                    <span style={{ fontSize: 12, color: "var(--brand)", fontFamily: "'Space Mono'" }}>Gemini 2.5 Flash powered extraction</span>
+                  </div>
 
-            {/* Feature strip */}
-            <div style={{
-              display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 32
-            }}>
-              {[
-                { emoji: "⚡", text: "Sub-second AI scan" },
-                { emoji: "✏️", text: "Editable line items" },
-                { emoji: "⚖️", text: "Proportional splits" },
-              ].map(f => (
-                <div key={f.text} style={{
-                  display: "flex", alignItems: "center", gap: 10, padding: "12px 14px",
-                  borderRadius: 12, background: "rgba(255,255,255,0.02)",
-                  border: "1px solid var(--border)"
-                }}>
-                  <span style={{ fontSize: 18 }}>{f.emoji}</span>
-                  <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 500 }}>{f.text}</span>
+                  <h1 style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: "clamp(2rem, 5vw, 3.2rem)", lineHeight: 1.1, letterSpacing: "-0.03em", color: "var(--text-primary)", margin: "0 0 14px" }}>
+                    Split any bill,{" "}
+                    <span className="text-brand-gradient">no arguments.</span>
+                  </h1>
+                  <p style={{ fontSize: 16, color: "var(--text-secondary)", maxWidth: 420, margin: "0 auto", lineHeight: 1.7 }}>
+                    Snap or upload your receipt. Our AI extracts every line item instantly — then you assign and split fairly.
+                  </p>
                 </div>
-              ))}
-            </div>
-          </div>
+
+                <UploadView onScanComplete={handleScanComplete} />
+
+                {/* Feature strip */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 32 }}>
+                  {[
+                    { emoji: "⚡", text: "Sub-second AI scan" },
+                    { emoji: "✏️", text: "Editable line items" },
+                    { emoji: "⚖️", text: "Proportional splits" },
+                  ].map(f => (
+                    <div key={f.text} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)" }}>
+                      <span style={{ fontSize: 18 }}>{f.emoji}</span>
+                      <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 500 }}>{f.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {phase === "review" && billData && sessionId && (
+              <ReviewView
+                initialBill={billData}
+                sessionId={sessionId}
+                onConfirmAccuracy={handleConfirmAccuracy}
+                onBackToUpload={() => setPhase("upload")}
+              />
+            )}
+
+            {phase === "assignment" && billData && sessionId && (
+              <AssignmentView
+                bill={billData}
+                sessionId={sessionId}
+                onCalculateComplete={handleCalculateComplete}
+                onBackToReview={() => setPhase("review")}
+              />
+            )}
+
+            {phase === "result" && splitResult && (
+              <ResultView
+                result={splitResult}
+                payerName={payerName}
+                payerUpiId={payerUpiId}
+                onBackToAssignment={() => setPhase("assignment")}
+                onStartOver={handleReset}
+              />
+            )}
+          </>
         )}
-
-        {phase === "review" && billData && sessionId && (
-          <ReviewView
-            initialBill={billData}
-            sessionId={sessionId}
-            onConfirmAccuracy={handleConfirmAccuracy}
-            onBackToUpload={handleReset}
-          />
-        )}
-
-        {phase === "assignment" && billData && sessionId && (
-          <AssignmentView
-            bill={billData}
-            sessionId={sessionId}
-            onCalculateComplete={handleCalculateComplete}
-            onBackToReview={() => setPhase("review")}
-          />
-        )}
-
-        {phase === "result" && splitResult && (
-          <ResultView
-            result={splitResult}
-            payerName={payerName}
-            payerUpiId={payerUpiId}
-            onBackToAssignment={() => setPhase("assignment")}
-            onStartOver={handleReset}
-          />
-        )}
-
-
       </main>
 
-      {/* ── Footer ───────────────────────────── */}
-      <footer style={{
-        borderTop: "1px solid var(--border)", padding: "16px 20px",
-        textAlign: "center", position: "relative", zIndex: 1
-      }}>
+      {/* ── Footer ── */}
+      <footer style={{ borderTop: "1px solid var(--border)", padding: "16px 20px", textAlign: "center", position: "relative", zIndex: 1 }}>
         <span style={{ fontFamily: "'Space Mono'", fontSize: 11, color: "var(--text-muted)" }}>
           SplitSnap © 2026 — Built with Gemini Flash
         </span>
