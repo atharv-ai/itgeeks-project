@@ -28,6 +28,8 @@ export function App() {
   const [billData, setBillData]   = useState<Bill | null>(null)
   const [splitResult, setSplitResult] = useState<CalculateResponse | null>(null)
   const [phase, setPhase] = useState<AppPhase>("upload")
+  const [payerName, setPayerName] = useState<string>("")
+  const [payerUpiId, setPayerUpiId] = useState<string>("")
 
   const handleScanComplete = (id: string, data: Bill) => {
     setSessionId(id)
@@ -40,8 +42,10 @@ export function App() {
     setPhase("assignment")
   }
 
-  const handleCalculateComplete = (result: CalculateResponse) => {
+  const handleCalculateComplete = (result: CalculateResponse, payer: string, upiId: string) => {
     setSplitResult(result)
+    setPayerName(payer)
+    setPayerUpiId(upiId)
     setPhase("result")
   }
 
@@ -49,6 +53,8 @@ export function App() {
     setSessionId(null)
     setBillData(null)
     setSplitResult(null)
+    setPayerName("")
+    setPayerUpiId("")
     setPhase("upload")
   }
 
@@ -239,10 +245,14 @@ export function App() {
         {phase === "result" && splitResult && (
           <ResultView
             result={splitResult}
+            payerName={payerName}
+            payerUpiId={payerUpiId}
             onBackToAssignment={() => setPhase("assignment")}
             onStartOver={handleReset}
           />
         )}
+
+
       </main>
 
       {/* ── Footer ───────────────────────────── */}

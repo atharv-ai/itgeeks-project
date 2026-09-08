@@ -210,6 +210,16 @@
     border-color: var(--border-focus);
     box-shadow: 0 0 0 3px var(--brand-dim);
   }
+  select.ss-input {
+    cursor: pointer;
+    appearance: auto;
+    color: var(--text-primary);
+    background: var(--bg-input);
+  }
+  select.ss-input option {
+    background: #1a1a2e;
+    color: var(--text-primary);
+  }
 
   .ss-btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold text-sm px-5 py-2.5;

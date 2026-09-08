@@ -4,7 +4,7 @@ import type { Bill, CalculateResponse } from "@/types"
 interface AssignmentViewProps {
   bill: Bill
   sessionId: string
-  onCalculateComplete: (result: CalculateResponse) => void
+  onCalculateComplete: (result: CalculateResponse, payerName: string, payerUpiId: string) => void
   onBackToReview: () => void
 }
 
@@ -56,6 +56,8 @@ export function AssignmentView({ bill, sessionId: _sessionId, onCalculateComplet
   })
   const [isCalculating, setIsCalculating] = useState(false)
   const [error, setError]               = useState<string | null>(null)
+  const [payerName, setPayerName]       = useState("")
+  const [payerUpiId, setPayerUpiId]     = useState("")
 
   const handleAddMember = (e?: React.FormEvent) => {
     if (e) e.preventDefault()
@@ -126,7 +128,7 @@ export function AssignmentView({ bill, sessionId: _sessionId, onCalculateComplet
         throw new Error(errData.detail || `Server error ${response.status}`)
       }
       const data: CalculateResponse = await response.json()
-      onCalculateComplete(data)
+      onCalculateComplete(data, payerName, payerUpiId)
     } catch (err: any) {
       setError(err.message || "Failed to calculate. Check that the backend is running.")
     } finally {
@@ -242,6 +244,60 @@ export function AssignmentView({ bill, sessionId: _sessionId, onCalculateComplet
               <UserPlusIcon /> Add
             </button>
           </form>
+        </div>
+      </div>
+
+      {/* ── Who Paid? panel ── */}
+      <div style={S.card}>
+        <div style={S.section}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <span style={{ fontSize: 16 }}>💳</span>
+            <span style={S.label}>Who paid the bill?</span>
+            <span style={{
+              marginLeft: 4, fontSize: 10, fontWeight: 600, padding: "2px 7px",
+              borderRadius: 99, background: "rgba(255,178,50,0.1)",
+              border: "1px solid rgba(255,178,50,0.2)", color: "var(--brand)"
+            }}>Optional</span>
+          </div>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "0 0 14px", lineHeight: 1.6 }}>
+            Set this to generate instant UPI payment QR codes so others can pay the person who covered the bill.
+          </p>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 180px", minWidth: 0 }}>
+              <label style={{ ...S.label, display: "block", marginBottom: 6 }}>Paid by</label>
+              <select
+                className="ss-input"
+                value={payerName}
+                onChange={e => setPayerName(e.target.value)}
+                style={{ width: "100%", height: 38 }}
+              >
+                <option value="">— No one selected —</option>
+                {members.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+              <label style={{ ...S.label, display: "block", marginBottom: 6 }}>UPI / Payment ID</label>
+              <input
+                className="ss-input"
+                type="text"
+                placeholder="e.g. alice@upi or +91-9876543210"
+                value={payerUpiId}
+                onChange={e => setPayerUpiId(e.target.value)}
+                style={{ width: "100%", height: 38 }}
+              />
+            </div>
+          </div>
+          {payerName && payerUpiId && (
+            <div style={{
+              marginTop: 12, padding: "8px 12px", borderRadius: 8,
+              background: "rgba(34,197,94,0.07)", border: "1px solid rgba(34,197,94,0.2)",
+              fontSize: 12, color: "var(--success)", fontWeight: 500
+            }}>
+              ✓ QR codes will appear in results — others can scan to pay <strong>{payerName}</strong> instantly.
+            </div>
+          )}
         </div>
       </div>
 

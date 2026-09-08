@@ -1,8 +1,11 @@
 import React, { useState } from "react"
+import QRCode from "react-qr-code"
 import type { CalculateResponse } from "@/types"
 
 interface ResultViewProps {
   result: CalculateResponse
+  payerName: string
+  payerUpiId: string
   onBackToAssignment: () => void
   onStartOver: () => void
 }
@@ -34,8 +37,9 @@ const THEMES = [
   { accent: "#f97316", bg: "rgba(249,115,22,0.08)",  border: "rgba(249,115,22,0.22)",  total: "#fdba74" },
 ]
 
-export function ResultView({ result, onBackToAssignment, onStartOver }: ResultViewProps) {
+export function ResultView({ result, payerName, payerUpiId, onBackToAssignment, onStartOver }: ResultViewProps) {
   const [copiedMember, setCopiedMember] = useState<string | null>(null)
+  const [expandedQr, setExpandedQr] = useState<string | null>(null)
 
   const handleCopy = (member: string, total: number, items: string) => {
     navigator.clipboard.writeText(
@@ -293,16 +297,81 @@ export function ResultView({ result, onBackToAssignment, onStartOver }: ResultVi
                 {/* Tear-off total */}
                 <div style={{
                   borderTop: "1px dashed rgba(255,255,255,0.1)",
-                  padding: "12px 18px",
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "14px 18px",
                   background: theme.bg
                 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: theme.accent }}>
-                    Total owed
-                  </span>
-                  <span style={{ fontFamily: "'Space Mono'", fontSize: 26, fontWeight: 800, color: theme.total, letterSpacing: "-0.02em" }}>
-                    ${person.total.toFixed(2)}
-                  </span>
+                  {/* Amount row */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: payerName && payerUpiId && person.member !== payerName ? 14 : 0 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: theme.accent }}>
+                      Total owed
+                    </span>
+                    <span style={{ fontFamily: "'Space Mono'", fontSize: 26, fontWeight: 800, color: theme.total, letterSpacing: "-0.02em" }}>
+                      ${person.total.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* UPI QR Code — only for non-payers when payer info is set */}
+                  {payerName && payerUpiId && person.member !== payerName && (() => {
+                    const upiString = `upi://pay?pa=${encodeURIComponent(payerUpiId)}&pn=${encodeURIComponent(payerName)}&am=${person.total.toFixed(2)}&cu=INR`
+                    const isExpanded = expandedQr === person.member
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        <div style={{
+                          height: "1px", background: "rgba(255,255,255,0.06)", margin: "0 -18px"
+                        }} />
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: theme.accent, marginBottom: 2 }}>
+                              Pay {payerName}
+                            </div>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'Space Mono'" }}>
+                              {payerUpiId}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setExpandedQr(isExpanded ? null : person.member)}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 5,
+                              padding: "5px 11px", borderRadius: 8, cursor: "pointer",
+                              background: isExpanded ? theme.bg : "rgba(255,255,255,0.05)",
+                              border: `1px solid ${isExpanded ? theme.border : "var(--border)"}`,
+                              color: isExpanded ? theme.accent : "var(--text-muted)",
+                              fontSize: 11, fontWeight: 600, transition: "all 0.15s", flexShrink: 0
+                            }}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                            </svg>
+                            {isExpanded ? "Hide QR" : "Scan & Pay"}
+                          </button>
+                        </div>
+
+                        {isExpanded && (
+                          <div className="fade-up" style={{ display: "flex", justifyContent: "center" }}>
+                            <div style={{
+                              padding: 14, borderRadius: 14,
+                              background: "#fff",
+                              border: `2px solid ${theme.border}`,
+                              boxShadow: `0 8px 32px ${theme.bg}, 0 0 0 4px ${theme.bg}`,
+                              display: "flex", flexDirection: "column", alignItems: "center", gap: 10
+                            }}>
+                              <QRCode
+                                value={upiString}
+                                size={160}
+                                style={{ display: "block" }}
+                                fgColor="#0d0d14"
+                                bgColor="#ffffff"
+                              />
+                              <div style={{ fontSize: 10, color: "#444", fontFamily: "'Space Mono'", textAlign: "center", lineHeight: 1.5, maxWidth: 160 }}>
+                                Scan to pay <strong>{payerName}</strong><br/>
+                                ₹{person.total.toFixed(2)} · UPI
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
             )
