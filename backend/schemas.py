@@ -1,5 +1,25 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict
+
+# ── Auth schemas ─────────────────────────────────────────────────────────────
+
+class UserCreate(BaseModel):
+    email: EmailStr = Field(description="User email address")
+    password: str = Field(min_length=6, description="Plain-text password (min 6 chars)")
+
+class UserInDB(BaseModel):
+    email: str
+    hashed_password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+class TokenData(BaseModel):
+    user_id: Optional[str] = None
+
+# ── Bill / Receipt schemas ────────────────────────────────────────────────────
+
 
 class LineItem(BaseModel):
     name: str = Field(description="Name or description of the line item")

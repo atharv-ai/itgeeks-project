@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from fastapi import FastAPI, HTTPException, status, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, status, UploadFile, File, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
@@ -14,6 +14,8 @@ from database import (
 from schemas import Bill, ExtractResponse, CalculateRequest, CalculateResponse
 from services.ai_extractor import extract_bill_from_images
 from services.math_engine import calculate_bill_split
+from routers import auth as auth_router_module
+from dependencies import get_current_user_id
 
 
 @asynccontextmanager
@@ -27,7 +29,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Bill Splitter API",
     description="Backend API for 'Split the Bill From a Photograph'",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -39,6 +41,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Include routers ───────────────────────────────────────────────────────────
+app.include_router(auth_router_module.router)
+
+
+# ── Inline schemas (only for endpoints defined here) ─────────────────────────
 
 class HealthResponse(BaseModel):
     status: str
@@ -55,13 +63,24 @@ class CreateSessionResponse(BaseModel):
     created_at: str
     session_name: str
 
+class BillSummary(BaseModel):
+    """Lightweight bill summary returned in the history list."""
+    session_id: str
+    session_name: str
+    status: str
+    created_at: str
+    grand_total: Optional[float] = None
+    member_count: Optional[int] = None
+
+
+# ── Health ────────────────────────────────────────────────────────────────────
+
 @app.get("/", response_model=HealthResponse, tags=["Health"])
 async def health_check():
     db = get_database()
     db_status = "disconnected"
     if db is not None:
         try:
-            # Ping database to confirm connectivity
             await db.command("ping")
             db_status = "connected"
         except Exception as e:
@@ -73,8 +92,20 @@ async def health_check():
         message="Bill Splitter Backend is running",
     )
 
-@app.post("/session", response_model=CreateSessionResponse, status_code=status.HTTP_201_CREATED, tags=["Sessions"])
-async def create_session(request: Optional[CreateSessionRequest] = None):
+
+# ── Sessions ──────────────────────────────────────────────────────────────────
+
+@app.post(
+    "/session",
+    response_model=CreateSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Sessions"],
+)
+async def create_session(
+    request: Optional[CreateSessionRequest] = None,
+    current_user_id: str = Depends(get_current_user_id),
+):
+    """Create a named session. Requires authentication."""
     collection = get_bill_sessions_collection()
     if collection is None:
         raise HTTPException(
@@ -87,6 +118,7 @@ async def create_session(request: Optional[CreateSessionRequest] = None):
     now = datetime.now(timezone.utc).isoformat()
     
     dummy_doc = {
+        "user_id": current_user_id,
         "session_name": session_name,
         "metadata": metadata,
         "status": "created",
@@ -105,6 +137,9 @@ async def create_session(request: Optional[CreateSessionRequest] = None):
         session_name=session_name,
     )
 
+
+# ── Extraction ────────────────────────────────────────────────────────────────
+
 @app.post(
     "/api/extract",
     response_model=ExtractResponse,
@@ -115,7 +150,9 @@ async def create_session(request: Optional[CreateSessionRequest] = None):
 async def extract_receipt(
     files: List[UploadFile] = File(..., description="One or more receipt images/photos to extract"),
     session_name: Optional[str] = Form(None, description="Optional name for this bill splitting session"),
+    current_user_id: str = Depends(get_current_user_id),
 ):
+    """Extract bill data from uploaded images. Requires authentication."""
     if not files:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -161,6 +198,7 @@ async def extract_receipt(
     doc_name = session_name if session_name else f"Receipt {now}"
 
     session_doc = {
+        "user_id": current_user_id,          # ← tied to authenticated user
         "session_name": doc_name,
         "status": "extracted",
         "created_at": now,
@@ -187,6 +225,9 @@ async def extract_receipt(
         extracted_data=Bill.model_validate(extracted_data),
     )
 
+
+# ── Calculation (stateless — no auth required) ────────────────────────────────
+
 @app.post(
     "/api/calculate",
     response_model=CalculateResponse,
@@ -195,6 +236,7 @@ async def extract_receipt(
     summary="Calculate proportional bill split among members",
 )
 async def calculate_split(request: CalculateRequest):
+    """Pure math endpoint — no authentication required."""
     try:
         result = calculate_bill_split(
             bill=request.bill,
@@ -212,7 +254,7 @@ async def calculate_split(request: CalculateRequest):
             detail=f"Calculation error: {str(e)}",
         )
 
-    # If session_id is provided, optionally update the MongoDB session document
+    # If session_id is provided, persist calculation result
     if request.session_id:
         collection = get_bill_sessions_collection()
         if collection is not None:
@@ -226,13 +268,14 @@ async def calculate_split(request: CalculateRequest):
                             "people": request.members,
                             "item_assignments": request.item_assignments,
                             "breakdown": result["breakdown"],
+                            "grand_total": result["grand_total"],
                             "status": "calculated",
                             "updated_at": now,
                         }
                     },
                 )
             except Exception:
-                pass
+                pass  # Non-fatal — calculation result is still returned
 
     return CalculateResponse(
         session_id=request.session_id,
@@ -243,6 +286,54 @@ async def calculate_split(request: CalculateRequest):
         total_discounts=result["total_discounts"],
         grand_total=result["grand_total"],
     )
+
+
+# ── Bill history (authenticated) ──────────────────────────────────────────────
+
+@app.get(
+    "/api/bills/history",
+    response_model=List[BillSummary],
+    tags=["History"],
+    summary="Get all past bills for the authenticated user",
+)
+async def get_bill_history(
+    current_user_id: str = Depends(get_current_user_id),
+    limit: int = 50,
+):
+    """
+    Returns up to `limit` bill sessions belonging to the authenticated user,
+    sorted newest-first.
+    """
+    collection = get_bill_sessions_collection()
+    if collection is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database collection not available",
+        )
+
+    cursor = (
+        collection
+        .find({"user_id": current_user_id}, {"raw_extracted": 0})  # exclude raw blob
+        .sort("created_at", -1)
+        .limit(limit)
+    )
+
+    sessions = []
+    async for doc in cursor:
+        breakdown = doc.get("breakdown") or []
+        sessions.append(
+            BillSummary(
+                session_id=str(doc["_id"]),
+                session_name=doc.get("session_name", "Untitled Session"),
+                status=doc.get("status", "unknown"),
+                created_at=doc.get("created_at", ""),
+                grand_total=doc.get("grand_total"),
+                member_count=len(breakdown) if breakdown else None,
+            )
+        )
+
+    return sessions
+
 
 if __name__ == "__main__":
     import uvicorn
