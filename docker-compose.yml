@@ -1,0 +1,64 @@
+services:
+
+  # ── MongoDB ──────────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7
+    container_name: splitsnap-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── FastAPI backend ───────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: splitsnap-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # MongoDB connection — use the Docker service name as the hostname
+      MONGODB_URL: mongodb://mongodb:27017/
+      DATABASE_NAME: hackathon_db
+
+      # JWT settings — override JWT_SECRET_KEY in production with a real secret
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production-use-a-long-random-string}
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRES_DAYS: 7
+
+      # Gemini API key — set in your shell or a .env file at the repo root
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  # ── Vite frontend ─────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: splitsnap-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      # Vite replaces this at request time in dev mode.
+      # Because the browser makes requests from the HOST machine (not inside Docker),
+      # the backend URL must be the host-visible address (localhost:8000), not the
+      # Docker internal service name.
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
+    driver: local
